@@ -1,0 +1,6 @@
+osvvm/
+Makefile
+work/
+*.fst
+*.txt
+*.yml
