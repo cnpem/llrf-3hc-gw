@@ -40,9 +40,22 @@ architecture RandomResponse of TestCtrl is
   signal QScoreboardIDArr         : ScoreboardIDArrType(
                                       NUM_ADC_CHANNELS-1 downto 0
                                     );
-  signal LLRF3HCDSPRefModelState  : LLRF3HCDSPRefModelStateEnum;
+  signal CICIScoreboardIDArr      : ScoreboardIDArrType(
+                                      NUM_ADC_CHANNELS-1 downto 0
+                                    );
+  signal CICQScoreboardIDArr      : ScoreboardIDArrType(
+                                      NUM_ADC_CHANNELS-1 downto 0
+                                    );
+  signal LLRF3HCDSPRefModelState  : LLRF3HCDSPRefModelStateRec(
+                                      CICIStateArr(
+                                        NUM_ADC_CHANNELS-1 downto 0
+                                      ),
+                                      CICQStateArr(
+                                        NUM_ADC_CHANNELS-1 downto 0
+                                      )
+                                    );
   signal TbID                     : AlertLogIDType;
-  signal TestDoneBarrier          : integer_barrier := 3;
+  signal TestDoneBarrier          : integer_barrier := 4;
 begin
   ------------------------------------------------------------------------------
   -- Processes
@@ -102,6 +115,16 @@ begin
           "QScoreboard[" & integer'image(chan) & "]",
           TbID
         );
+      CICIScoreboardIDArr(chan) <=
+        NewID(
+          "CICIScoreboard[" & integer'image(chan) & "]",
+          TbID
+        );
+      CICQScoreboardIDArr(chan) <=
+        NewID(
+          "CICQScoreboard[" & integer'image(chan) & "]",
+          TbID
+        );
     end loop;
 
     -- Wait for design reset
@@ -136,19 +159,31 @@ begin
     ----------------------------------------------------------------------------
     -- Variables
     ----------------------------------------------------------------------------
-    variable RV                 : RandomPType;
-    variable ADCDataArr         : integer_vector(
-                                    NUM_ADC_CHANNELS-1 downto 0
-                                  );
-    variable RefModelIArr       : integer_vector(
-                                    NUM_ADC_CHANNELS-1 downto 0
-                                  );
-    variable RefModelQArr       : integer_vector(
-                                    NUM_ADC_CHANNELS-1 downto 0
-                                  );
-    variable RefModelIQValidArr : boolean_vector(
-                                    NUM_ADC_CHANNELS-1 downto 0
-                                  );
+    variable RV                   : RandomPType;
+    variable ADCDataArr           : integer_vector(
+                                      NUM_ADC_CHANNELS-1 downto 0
+                                    );
+    variable RefModelIArr         : integer_vector(
+                                      NUM_ADC_CHANNELS-1 downto 0
+                                    );
+    variable RefModelQArr         : integer_vector(
+                                      NUM_ADC_CHANNELS-1 downto 0
+                                    );
+    variable RefModelIQValidArr   : boolean_vector(
+                                      NUM_ADC_CHANNELS-1 downto 0
+                                    );
+    variable RefModelCICIArr      : integer_vector(
+                                      NUM_ADC_CHANNELS-1 downto 0
+                                    );
+    variable RefModelCICQArr      : integer_vector(
+                                      NUM_ADC_CHANNELS-1 downto 0
+                                    );
+    variable RefModelCICIValidArr : boolean_vector(
+                                      NUM_ADC_CHANNELS-1 downto 0
+                                    );
+    variable RefModelCICQValidArr : boolean_vector(
+                                      NUM_ADC_CHANNELS-1 downto 0
+                                    );
   begin
     RV.InitSeed(
       to_lower(
@@ -157,82 +192,128 @@ begin
     );
 
     LLRF3HCDSPRefModelInit(
+      NUM_ADC_CHANNELS,
+      CIC_DIFF_DELAY,
+      CIC_NUM_STAGES,
       LLRF3HCDSPRefModelState
     );
 
     -- Wait for design reset
     wait until Reset = '0';
 
-    for i in 0 to NUM_SAMPLES_PER_TEST-1 loop
-      --------------------------------------------------------------------------
-      -- Generate random stimulus
-      --------------------------------------------------------------------------
-      for chan in 0 to NUM_ADC_CHANNELS-1 loop
-        ADCDataArr(chan) :=
-          RV.RandInt(
-            -2**(ADC_DATA_WIDTH-1),
-             2**(ADC_DATA_WIDTH-1)-1
-          );
-      end loop;
-
-      --------------------------------------------------------------------------
-      -- Iterate reference model
-      --------------------------------------------------------------------------
-      work.LLRF3HCDSPRefModelPkg.LLRF3HCDSPRefModelIterate(
+    for CICRatio in 0 to CIC_MAX_RATIO loop
+      -- Any changes to CIC ratio reinitializes its internal state
+      LLRF3HCDSPRefModelCICReInit
         NUM_ADC_CHANNELS,
-        LLRF3HCDSPRefModelState,
-        ADCDataArr,
-        RefModelIArr,
-        RefModelQArr,
-        RefModelIQValidArr
+        CIC_DIFF_DELAY,
+        CIC_NUM_STAGES,
+        LLRF3HCDSPRefModelState
       );
 
-      --------------------------------------------------------------------------
-      -- Push valid expected values
-      --------------------------------------------------------------------------
-      for chan in 0 to NUM_ADC_CHANNELS-1 loop
-        -- Push valid ADC values
-        Push(
-          ADCScoreboardIDArr(chan),
-          std_logic_vector(
-            to_signed(
-              ADCDataArr(chan),
-              DUTDiagADCDataToTestCtrlIfaceIn.DataArr(chan)'LENGTH
-            )
-          )
+      for i in 0 to NUM_SAMPLES_PER_TEST-1 loop
+        ------------------------------------------------------------------------
+        -- Generate random stimulus
+        ------------------------------------------------------------------------
+        for chan in 0 to NUM_ADC_CHANNELS-1 loop
+          ADCDataArr(chan) :=
+            RV.RandInt(
+              -2**(ADC_DATA_WIDTH-1),
+               2**(ADC_DATA_WIDTH-1)-1
+            );
+        end loop;
+
+        ------------------------------------------------------------------------
+        -- Iterate reference model
+        ------------------------------------------------------------------------
+        work.LLRF3HCDSPRefModelPkg.LLRF3HCDSPRefModelIterate(
+          NUM_ADC_CHANNELS,
+          ADC_DATA_WIDTH,
+          CIC_DIFF_DELAY,
+          CIC_NUM_STAGES,
+          LLRF3HCDSPRefModelState,
+          ADCDataArr,
+          CICRatio,
+          RefModelIArr,
+          RefModelQArr,
+          RefModelIQValidArr,
+          RefModelCICIArr,
+          RefModelCICQArr,
+          RefModelCICIValidArr,
+          RefModelCICQValidArr
         );
-        -- Push valid IQ demodulators values
-        if RefModelIQValidArr(chan) = TRUE then
-          Push(
-            IScoreboardIDArr(chan),
-            std_logic_vector(
-              to_signed(
-                RefModelIArr(chan),
-                DUTDiagIQDemodulatorToTestCtrlIfaceIn.IArr(chan)'LENGTH
-              )
-            )
-          );
-          Push(
-            QScoreboardIDArr(chan),
-            std_logic_vector(
-              to_signed(
-                RefModelQArr(chan),
-                DUTDiagIQDemodulatorToTestCtrlIfaceIn.QArr(chan)'LENGTH
-              )
-            )
-          );
-        end if;
-      end loop;
 
-      --------------------------------------------------------------------------
-      -- Send ADC data
-      --------------------------------------------------------------------------
-      work.LLRF3HCDSPVCPkg.SendADCData(
-        NUM_ADC_CHANNELS,
-        Clk,
-        ADCDataArr,
-        TestCtrlToDUTIfaceOut
-      );
+        ------------------------------------------------------------------------
+        -- Push valid expected values
+        ------------------------------------------------------------------------
+        for chan in 0 to NUM_ADC_CHANNELS-1 loop
+          -- Push valid ADC values
+          Push(
+            ADCScoreboardIDArr(chan),
+            std_logic_vector(
+              to_signed(
+                ADCDataArr(chan),
+                DUTDiagADCDataIfaceIn.DataArr(chan)'LENGTH
+              )
+            )
+          );
+
+          -- Push valid IQ demodulators values
+          if RefModelIQValidArr(chan) = TRUE then
+            Push(
+              IScoreboardIDArr(chan),
+              std_logic_vector(
+                to_signed(
+                  RefModelIArr(chan),
+                  DUTDiagIQDemodulatorIfaceIn.IDataArr(chan)'LENGTH
+                )
+              )
+            );
+            Push(
+              QScoreboardIDArr(chan),
+              std_logic_vector(
+                to_signed(
+                  RefModelQArr(chan),
+                  DUTDiagIQDemodulatorIfaceIn.QDataArr(chan)'LENGTH
+                )
+              )
+            );
+          end if;
+
+          -- Push valid CIC values
+          if RefModelCICIArrOut(chan) = TRUE then
+            Push(
+              CICIScoreboardIDArr(chan),
+              std_logic_vector(
+                to_signed(
+                  RefModelCICIArr(chan),
+                  DUTDiagIQDemodulatorIfaceIn.IArr(chan)'LENGTH
+                )
+              )
+            );
+          end if;
+          if RefModelCICQArrOut(chan) = TRUE then
+            Push(
+              CICQScoreboardIDArr(chan),
+              std_logic_vector(
+                to_signed(
+                  RefModelCICQArr(chan),
+                  DUTDiagIQDemodulatorIfaceIn.IArr(chan)'LENGTH
+                )
+              )
+            );
+          end if;
+        end loop;
+
+        ------------------------------------------------------------------------
+        -- Send ADC data
+        ------------------------------------------------------------------------
+        SendADCData(
+          NUM_ADC_CHANNELS,
+          Clk,
+          ADCDataArr,
+          ADCDataIfaceOut
+        );
+      end loop;
     end loop;
 
     WaitForBarrier(TestDoneBarrier);
@@ -261,10 +342,10 @@ begin
       -- Get valid diagnostic data from ADCs
       --------------------------------------------------------------------------
       loop
-        work.LLRF3HCDSPVCPkg.GetDiagADCData(
+        GetDiagADCData(
           NUM_ADC_CHANNELS,
           Clk,
-          DUTDiagADCDataToTestCtrlIfaceIn,
+          DUTDiagADCDataIfaceIn,
           DUTADCDataArr,
           DUTADCDataValidArr
         );
@@ -280,7 +361,7 @@ begin
           std_logic_vector(
             to_signed(
               DUTADCDataArr(chan),
-              DUTDiagADCDataToTestCtrlIfaceIn.DataArr(chan)'LENGTH
+              DUTDiagADCDataIfaceIn.DataArr(chan)'LENGTH
             )
           )
         );
@@ -316,10 +397,10 @@ begin
       -- Get valid diagnostic data from IQ demodulators
       --------------------------------------------------------------------------
       loop
-        work.LLRF3HCDSPVCPkg.GetDiagIQDemodulatorData(
+        GetDiagIQDemodulatorData(
           NUM_ADC_CHANNELS,
           Clk,
-          DUTDiagIQDemodulatorToTestCtrlIfaceIn,
+          DUTDiagIQDemodulatorIfaceIn,
           DUTIArr,
           DUTQArr,
           DUTIQValidArr
@@ -336,7 +417,7 @@ begin
           std_logic_vector(
             to_signed(
               DUTIArr(chan),
-              DUTDiagIQDemodulatorToTestCtrlIfaceIn.IArr(chan)'LENGTH
+              DUTDiagIQDemodulatorIfaceIn.IArr(chan)'LENGTH
             )
           )
         );
@@ -345,7 +426,7 @@ begin
           std_logic_vector(
             to_signed(
               DUTQArr(chan),
-              DUTDiagIQDemodulatorToTestCtrlIfaceIn.QArr(chan)'LENGTH
+              DUTDiagIQDemodulatorIfaceIn.QArr(chan)'LENGTH
             )
           )
         );
@@ -356,4 +437,108 @@ begin
 
     wait;
   end process IQDemodulatorGetCheckDataProc;
+
+  -- Get diagnostic data from 3HC LLRF DSP's I component CICs and check it
+  -- against expected values
+  CICIGetCheckDataProc : process
+    ----------------------------------------------------------------------------
+    -- Variables
+    ----------------------------------------------------------------------------
+    variable DUTCICIArr       : integer_vector(
+                                  NUM_ADC_CHANNELS-1 downto 0
+                                );
+    variable DUTCICIValidArr  : boolean_vector(
+                                  NUM_ADC_CHANNELS-1 downto 0
+                                );
+  begin
+    -- Wait for design reset
+    wait until Reset = '0';
+
+    for i in 0 to NUM_SAMPLES_PER_TEST-1 loop
+      --------------------------------------------------------------------------
+      -- Get valid diagnostic data from I component CICs
+      --------------------------------------------------------------------------
+      loop
+        GetDiagCICData(
+          NUM_ADC_CHANNELS,
+          Clk,
+          DUTDiagCICIfaceIn,
+          DUTCICIArr,
+          DUTCICIValidArr
+        );
+        exit when and DUTCICIValidArr = TRUE;
+      end loop;
+
+      for chan in 0 to NUM_ADC_CHANNELS-1 loop
+        ------------------------------------------------------------------------
+        -- Check actual values against the expected ones
+        ------------------------------------------------------------------------
+        Check(
+          CICIScoreboardIDArr(chan),
+          std_logic_vector(
+            to_signed(
+              DUTCICIArr(chan),
+              DUTDiagCICIfaceIn.DataArr(chan)'LENGTH
+            )
+          )
+        );
+      end loop;
+    end loop;
+
+    WaitForBarrier(TestDoneBarrier);
+
+    wait;
+  end process CICIGetCheckDataProc;
+
+  -- Get diagnostic data from 3HC LLRF DSP's Q component CICs and check it
+  -- against expected values
+  CICQGetCheckDataProc : process
+    ----------------------------------------------------------------------------
+    -- Variables
+    ----------------------------------------------------------------------------
+    variable DUTCICQArr       : integer_vector(
+                                  NUM_ADC_CHANNELS-1 downto 0
+                                );
+    variable DUTCICQValidArr  : boolean_vector(
+                                  NUM_ADC_CHANNELS-1 downto 0
+                                );
+  begin
+    -- Wait for design reset
+    wait until Reset = '0';
+
+    for i in 0 to NUM_SAMPLES_PER_TEST-1 loop
+      --------------------------------------------------------------------------
+      -- Get valid diagnostic data from Q component CICs
+      --------------------------------------------------------------------------
+      loop
+        GetDiagCICData(
+          NUM_ADC_CHANNELS,
+          Clk,
+          DUTDiagCICIfaceIn,
+          DUTCICQArr,
+          DUTCICQValidArr
+        );
+        exit when and DUTCICQValidArr = TRUE;
+      end loop;
+
+      for chan in 0 to NUM_ADC_CHANNELS-1 loop
+        ------------------------------------------------------------------------
+        -- Check actual values against the expected ones
+        ------------------------------------------------------------------------
+        Check(
+          CICIScoreboardIDArr(chan),
+          std_logic_vector(
+            to_signed(
+              DUTCICQArr(chan),
+              DUTDiagCICQfaceIn.DataArr(chan)'LENGTH
+            )
+          )
+        );
+      end loop;
+    end loop;
+
+    WaitForBarrier(TestDoneBarrier);
+
+    wait;
+  end process CICQGetCheckDataProc;
 end RandomResponse;
