@@ -1,3 +1,6 @@
 [submodule "hdl/ip_cores/general-cores"]
 	path = hdl/ip_cores/general-cores
 	url = git@gitlab.com:ohwr/project/general-cores.git
+[submodule "hdl/testbench/OsvvmLibraries"]
+	path = hdl/testbench/OsvvmLibraries
+	url = git@github.com:OSVVM/OsvvmLibraries.git
