@@ -1,0 +1,18 @@
+name: Run all testbenches
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  run_testbenches:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/lnls-dig/gw-tb-toolchain:latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Run testbenches
+        run: git config --global --add safe.directory /__w/llrf-3hc-gw/llrf-3hc-gw && git submodule update --init --recursive && cd hdl/testbench && ./test-all.sh
