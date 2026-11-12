@@ -1,6 +1,6 @@
 modules = {
     "local": [
         "essffw",
-        "general-cores",
+        "hdlmake_library",
     ]
 };

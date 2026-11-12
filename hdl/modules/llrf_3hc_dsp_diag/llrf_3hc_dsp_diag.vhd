@@ -18,9 +18,12 @@
 library ieee;
   use ieee.std_logic_1164.all;
 
+library general_cores;
+  use general_cores.wishbone_pkg.all;
+  use general_cores.wb_llrf_3hc_dsp_diag_regs_pkg.all;
+
 library work;
   use work.llrf_3hc_pkg.all;
-  use work.wishbone_pkg.all;
 
 entity llrf_3hc_dsp_diag is
   generic (
@@ -173,7 +176,7 @@ begin
   gen_slow_diagnostics : for chan in 0 to g_NUM_ADC_CHANNELS-1 generate
   begin
     -- ADCs
-    cmp_gc_cic_adc_data : entity work.gc_cic
+    cmp_gc_cic_adc_data : entity general_cores.gc_cic
       generic map (
         g_DATA_IN_WIDTH   => g_ADC_DATA_WIDTH,
         g_DATA_OUT_WIDTH  => g_ADC_DATA_WIDTH+c_LOG2_ADC_TO_SLOW_DIAG_RATIO,
@@ -199,7 +202,7 @@ begin
         )                 => open,
         valid_o           => slow_diag_adc_data_valid_arr(chan)
       );
-    cmp_cdc_slow_diag_adc_data : entity work.gc_sync_word_wr
+    cmp_cdc_slow_diag_adc_data : entity general_cores.gc_sync_word_wr
       generic map (
         g_AUTO_WR   => false,
         g_WIDTH     => g_ADC_DATA_WIDTH
@@ -218,7 +221,7 @@ begin
       );
 
     -- IQ demodulators: I component
-    cmp_gc_cic_iq_demodulator_i : entity work.gc_cic
+    cmp_gc_cic_iq_demodulator_i : entity general_cores.gc_cic
       generic map (
         g_DATA_IN_WIDTH   => g_ADC_DATA_WIDTH+1,
         g_DATA_OUT_WIDTH  => g_ADC_DATA_WIDTH+c_LOG2_ADC_TO_SLOW_DIAG_RATIO+1,
@@ -244,7 +247,7 @@ begin
         )                 => open,
         valid_o           => slow_diag_iq_demodulator_i_valid_arr(chan)
       );
-    cmp_cdc_slow_diag_iq_demodulator_i : entity work.gc_sync_word_wr
+    cmp_cdc_slow_diag_iq_demodulator_i : entity general_cores.gc_sync_word_wr
       generic map (
         g_AUTO_WR   => false,
         g_WIDTH     => g_ADC_DATA_WIDTH+1
@@ -263,7 +266,7 @@ begin
       );
 
     -- IQ demodulators: Q component
-    cmp_gc_cic_iq_demodulator_q : entity work.gc_cic
+    cmp_gc_cic_iq_demodulator_q : entity general_cores.gc_cic
       generic map (
         g_DATA_IN_WIDTH   => g_ADC_DATA_WIDTH+1,
         g_DATA_OUT_WIDTH  => g_ADC_DATA_WIDTH+c_LOG2_ADC_TO_SLOW_DIAG_RATIO+1,
@@ -289,7 +292,7 @@ begin
         )                 => open,
         valid_o           => slow_diag_iq_demodulator_q_valid_arr(chan)
       );
-    cmp_cdc_slow_diag_iq_demodulator_q : entity work.gc_sync_word_wr
+    cmp_cdc_slow_diag_iq_demodulator_q : entity general_cores.gc_sync_word_wr
       generic map (
         g_AUTO_WR   => false,
         g_WIDTH     => g_ADC_DATA_WIDTH+1
@@ -311,7 +314,7 @@ begin
   ------------------------------------------------------------------------------
   --  Wishbone ABI for slow diagnostics
   ------------------------------------------------------------------------------
-  cmp_wb_llrf_3hc_dsp_diag_regs : entity work.wb_llrf_3hc_dsp_diag_regs
+  cmp_wb_llrf_3hc_dsp_diag_regs : entity general_cores.wb_llrf_3hc_dsp_diag_regs
     port map (
       rst_n_i   => not rst_sys_i,
       clk_i     => clk_sys_i,
