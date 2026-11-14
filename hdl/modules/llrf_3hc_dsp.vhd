@@ -21,6 +21,8 @@
 library ieee;
   use ieee.std_logic_1164.all;
 
+library general_cores;
+
 library work;
   use work.llrf_3hc_pkg.all;
 
@@ -132,7 +134,7 @@ begin
     ----------------------------------------------------------------------------
     -- IQ Demodulator
     ----------------------------------------------------------------------------
-    cmp_iq_demodulator : entity work.gc_iq_demodulator
+    cmp_iq_demodulator : entity general_cores.gc_iq_demodulator
       generic map (
         g_N         => g_ADC_DATA_WIDTH
       )
