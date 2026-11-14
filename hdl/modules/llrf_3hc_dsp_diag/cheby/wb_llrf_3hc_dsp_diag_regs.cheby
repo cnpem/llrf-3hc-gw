@@ -1,0 +1,51 @@
+memory-map:
+  bus: wb-32-be
+  name: wb_llrf_3hc_dsp_diag_regs
+  description: |
+    Wishbone register interface for 3rd Hamonic (3HC) Low-Level Radio Frequency
+    (LLRF) top-level digital signal processing chain slow diagnostics.
+  x-hdl:
+    busgroup: True
+    iogroup: io_intf
+  children:
+    - repeat:
+        name: ch
+        count: 10
+        children:
+          - block:
+              name: rf_measurement
+              description: |
+                Radio frequency measurements.
+              children:
+                - reg:
+                    name: adc
+                    width: 32
+                    access: ro
+                    address: next
+                    description: |
+                      ADC reading.
+
+                      Format: signed Q16.0.
+                - block:
+                    name: iq_demodulator
+                    description: |
+                      IQ demodulator components.
+                    children:
+                      - reg:
+                          name: i
+                          width: 32
+                          access: ro
+                          address: next
+                          description: |
+                            I component.
+
+                            Format: signed Q17.0.
+                      - reg:
+                          name: q
+                          width: 32
+                          access: ro
+                          address: next
+                          description: |
+                            Q component.
+
+                            Format: signed Q17.0.
