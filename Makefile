@@ -22,3 +22,26 @@ clean:
 	$(MAKE) -C $(ESSFPGA_FRAMEWORK_DIR) \
 		project="$(PROJECT_CFG)" \
 		clean
+
+.PHONY: all project gui_project synthesis clean
+
+all: project
+
+project:
+	$(MAKE) -C $(ESSFPGA_FRAMEWORK_DIR) \
+		project="$(PROJECT_CFG)"
+
+gui_project:
+	$(MAKE) -C $(ESSFPGA_FRAMEWORK_DIR) \
+		gui_project \
+		project="$(PROJECT_CFG)"
+
+synthesis:
+	$(MAKE) -C $(ESSFPGA_FRAMEWORK_DIR) \
+		synthesis \
+		project="$(PROJECT_CFG)"
+
+clean:
+	$(MAKE) -C $(ESSFPGA_FRAMEWORK_DIR) \
+		project="$(PROJECT_CFG)" \
+		clean
