@@ -117,8 +117,8 @@ package clogic_essffw_config is
   constant PROJECT_ID : std_logic_vector(31 downto 0) := x"0000_0000";
 
   --! Updated by scripts (DO NOT MODIFY!)
-  constant PROJECT_GIT_HASH : std_logic_vector(31 downto 0) := x"07db7c32";
-  constant PROJECT_BUILD_NR : integer := 150 ;
+  constant PROJECT_GIT_HASH : std_logic_vector(31 downto 0) := x"030b933e";
+  constant PROJECT_BUILD_NR : integer := 154 ;
 
   ------------------------------------------------------------------------------
   -- Configuration of FSP feature types. (Blank for sis8300)

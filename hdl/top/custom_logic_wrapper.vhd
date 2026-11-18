@@ -53,22 +53,27 @@ begin
   ------------------------------------------------------------------------------
   cmp_wb_axi4lite_bridge : entity general_cores.wb_axi4lite_bridge
     port map (
-      clk_sys_i   => framework_core_i.processing_clock,
-      rst_n_i     => framework_core_i.reset_n,
+      clk_sys_i   => framework_core_i.regbus_axi_aclk,
+      rst_n_i     => framework_core_i.regbus_axi_aresetn,
+
       ARVALID     => framework_core_i.regbus_axi_ms.arvalid,
       AWVALID     => framework_core_i.regbus_axi_ms.awvalid,
       BREADY      => framework_core_i.regbus_axi_ms.bready,
       RREADY      => framework_core_i.regbus_axi_ms.rready,
       WLAST       => '1',
       WVALID      => framework_core_i.regbus_axi_ms.wvalid,
+
       ARADDR      => f_align_lsb_32(
         framework_core_i.regbus_axi_ms.araddr
       ),
+
       AWADDR      => f_align_lsb_32(
         framework_core_i.regbus_axi_ms.awaddr
       ),
+
       WDATA       => framework_core_i.regbus_axi_ms.wdata,
       WSTRB       => framework_core_i.regbus_axi_ms.wstrb,
+
       ARREADY     => framework_core_o.regbus_axi_sm.arready,
       AWREADY     => framework_core_o.regbus_axi_sm.awready,
       BVALID      => framework_core_o.regbus_axi_sm.bvalid,
@@ -78,11 +83,7 @@ begin
       BRESP       => framework_core_o.regbus_axi_sm.bresp,
       RRESP       => framework_core_o.regbus_axi_sm.rresp,
       RDATA       => framework_core_o.regbus_axi_sm.rdata,
-      -- TODO: Remaining AXI4-Lite signals
-      -- framework_core_i.regbus_axi_aclk,
-      -- framework_core_i.regbus_axi_aresetn,
-      -- framework_core_i.regbus_axi_ms.awprot,
-      -- framework_core_i.regbus_axi_ms.arprot,
+
       wb_adr      => cmp_llrf_3hc_dsp_diag_wb_i.adr,
       wb_dat_m2s  => cmp_llrf_3hc_dsp_diag_wb_i.dat,
       wb_sel      => cmp_llrf_3hc_dsp_diag_wb_i.sel,
@@ -95,24 +96,22 @@ begin
       wb_ack      => cmp_llrf_3hc_dsp_diag_wb_o.ack,
       wb_stall    => cmp_llrf_3hc_dsp_diag_wb_o.stall
     );
-
   ------------------------------------------------------------------------------
   -- Top-level 3HC LLRF DSP with diagnostics
   ------------------------------------------------------------------------------
   cmp_llrf_3hc_dsp_diag : entity llrf_3hc.llrf_3hc_dsp_diag
-  generic map (
-    g_NUM_ADC_CHANNELS  => ESSFFW_NR_ADC_CHANNELS,
-    g_ADC_DATA_WIDTH    => ESSFFW_ADC_RESOLUTION
-  )
-  port map (
-    rst_sys_i           => framework_core_i.reset_n,
-    clk_sys_i           => framework_core_i.processing_clock,
-    -- Use ADC0 AXI-Stream clock as the sampling clock
-    clk_sampling_i      => framework_core_i.adc_preproc_aclk(0),
-    adc_data_arr_i      => adc_data_arr,
-    wb_i                => cmp_llrf_3hc_dsp_diag_wb_i,
-    wb_o                => cmp_llrf_3hc_dsp_diag_wb_o
-  );
+    generic map (
+      g_NUM_ADC_CHANNELS => ESSFFW_NR_ADC_CHANNELS,
+      g_ADC_DATA_WIDTH   => ESSFFW_ADC_RESOLUTION
+    )
+    port map (
+      rst_sys_i      => not framework_core_i.reset_n,
+      clk_sys_i      => framework_core_i.processing_clock,
+      clk_sampling_i => framework_core_i.adc_preproc_aclk(0),
+      adc_data_arr_i => adc_data_arr,
+      wb_i           => cmp_llrf_3hc_dsp_diag_wb_i,
+      wb_o           => cmp_llrf_3hc_dsp_diag_wb_o
+    );
 
 
   gen_framework_conn : for chan in 0 to ESSFFW_NR_ADC_CHANNELS-1 generate
@@ -122,4 +121,25 @@ begin
             adc_data_arr(chan)'left downto 0
         );
   end generate gen_framework_conn;
+
+  ------------------------------------------------------------------------------
+  -- Unused optical-link interfaces
+  ------------------------------------------------------------------------------
+  -- The SIS8300KU BSP keeps the LL-link transmit FIFOs instantiated even when
+  -- the custom logic does not transmit optical data. Therefore, the optical
+  -- data clock must remain connected to an active clock. Keep transmission
+  -- disabled by holding tvalid low.
+  ------------------------------------------------------------------------------
+  gen_unused_optical_links :
+  for chan in 0 to ESSFFW_NR_OPT_CHANNELS-1 generate
+  begin
+    framework_core_o.fiber_opt(chan).data_clk <=
+      framework_core_i.processing_clock;
+
+    framework_core_o.fiber_opt(chan).tx_tdata <=
+      (others => '0');
+
+    framework_core_o.fiber_opt(chan).tx_tvalid <=
+      '0';
+  end generate gen_unused_optical_links;
 end architecture structural;
