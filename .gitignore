@@ -1,0 +1,22 @@
+# Generated FPGA build directory
+/build/
+
+# Published firmware artifacts
+/artifacts/
+
+# Legacy/generated files in repository root
+/.cache/
+/.tmpCRC/
+/.Xil/
+/output/
+/xsim.dir/
+
+/mode_*_memory_*.mif
+/iter_*_CongestedCLBsAndNets.txt
+/updatemem.jou
+/updatemem.log
+
+/sis8300ku_llrf*.bit
+/sis8300ku_llrf*.bin
+/sis8300ku_llrf*.prm
+/sis8300ku_llrf*.ltx
