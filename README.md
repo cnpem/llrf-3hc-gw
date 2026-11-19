@@ -18,7 +18,11 @@ Gateware for the Sirius' 3rd Harmonic Cavity (3HC) Low-Level Radio Frequency
 |    |        Application-specific modules.
 |    |
 |    |-- platform:
-|    |        Platform-specific modules (e.g. Xilinx ChipScope wrappers).
+|    |     |   Platform-specific HDL and framework integration files.
+|    |     |   Each supported platform should have its own subdirectory.
+|    |     |
+|    |     |-- sis8300ku:
+|    |               SIS8300KU-specific ESSFFW configuration packages.
 |    |
 |    |-- sim:
 |    |        Generic simulation files (e.g. reusable Bus Functional
@@ -33,5 +37,5 @@ Gateware for the Sirius' 3rd Harmonic Cavity (3HC) Low-Level Radio Frequency
 |    |          defined within the "sim" directory.
 |    |
 |    |-- top:
-|             Top design modules.
+|             Synthesizable top-level design modules and framework wrappers.
 ```
